@@ -12,3 +12,5 @@ logs/
 local_runs
 local_docs
 head_to_head_scripts
+data/manifest.sp8192_only.backup.json
+local_research/
