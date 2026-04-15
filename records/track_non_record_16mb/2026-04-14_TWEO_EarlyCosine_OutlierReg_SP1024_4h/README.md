@@ -152,7 +152,14 @@ python3 train_gpt.py
 
 ## Planned H100 Confirmation
 
-Before opening this PR, I plan to add H100 logs for matched baseline/TWEO runs and, if compute allows, a seed 999 local/H100 confirmation. The acceptance claim should be either:
+Before opening this PR, I plan to add H100 logs for matched baseline/TWEO runs. The first target is a 1xH100 80-minute seed-999 matched pair. This is a practical proxy for the 8xH100 10-minute setting because the baseline uses the same global batch and 1xH100 does roughly the same per-step work via gradient accumulation that 8xH100 distributes across GPUs. The actual step count is still reported and should be treated as the real comparison.
+
+```bash
+python3 data/cached_challenge_fineweb.py --variant sp1024
+bash records/track_non_record_16mb/2026-04-14_TWEO_EarlyCosine_OutlierReg_SP1024_4h/run_h100_80m_pair.sh
+```
+
+The acceptance claim should be either:
 
 - positive: TWEO early cosine improves BPB across 3 matched seeds, or
 - negative/weak-positive: TWEO changes activation geometry reliably, but the BPB gain is small and not yet robust enough for a record path.
@@ -167,6 +174,7 @@ Before opening this PR, I plan to add H100 logs for matched baseline/TWEO runs a
 - `train_seed42_tweo_cosdecay_4h.log`
 - `train_seed314_base_4h.log`
 - `train_seed314_tweo_cosdecay_4h.log`
+- `run_h100_80m_pair.sh`
 
 ## Credits
 
