@@ -2,7 +2,7 @@
   "author": "Lucas Bryant",
   "github_id": "PapaFranku4647",
   "name": "TWEO Early-Cosine Activation Outlier Regularization",
-  "blurb": "Non-record research submission testing TWEO on the SP1024 Parameter Golf baseline. A tiny early cosine-decayed TWEO loss improves final int8+zlib BPB across two matched 4h wallclock seed pairs, while always-on or tail TWEO hurts BPB. Draft pending H100 confirmation.",
+  "blurb": "Non-record research submission testing TWEO on the SP1024 Parameter Golf baseline. A tiny early cosine-decayed TWEO loss improves final int8+zlib BPB across two matched local 4h seed pairs and one matched 1×H100 80-minute directional seed pair, while the fixed and nonzero-tail TWEO variants I tested hurt BPB in this setup.",
   "date": "2026-04-14",
   "track": "non-record-unlimited-compute-16mb",
   "val_loss": 2.07668849,
@@ -25,6 +25,16 @@
       "baseline_artifact_bytes": 15875856,
       "tweo_artifact_bytes": 15892526
     }
+  },
+  "h100_confirmation": {
+    "hardware": "1×H100 80GB HBM3",
+    "wallclock_seconds": 4800,
+    "seed": 999,
+    "baseline_val_bpb": 1.23612313,
+    "tweo_val_bpb": 1.23184948,
+    "delta_val_bpb": -0.00427365,
+    "baseline_artifact_bytes": 15867948,
+    "tweo_artifact_bytes": 15884729
   },
   "wallclock_seconds": 14400,
   "bytes_total": 15890375,

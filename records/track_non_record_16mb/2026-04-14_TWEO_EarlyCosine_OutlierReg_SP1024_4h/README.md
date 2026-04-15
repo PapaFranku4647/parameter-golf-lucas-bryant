@@ -1,8 +1,10 @@
 # Non-record: TWEO Early-Cosine Activation Outlier Regularization
 
-**Status:** draft research submission pending H100 confirmation.
+**Status:** draft research submission. H100 confirmation logs are now included.
 
-**Current local 4h mean:** baseline `1.23128` BPB -> TWEO `1.22993` BPB (`-0.00134`), 2 matched seeds.
+**Current local 4h mean across 2 matched seed pairs:** baseline `1.23128` BPB -> TWEO `1.22993` BPB (`-0.00134`).
+
+**1×H100 80-minute directional confirmation:** baseline `1.23612` BPB -> TWEO `1.23185` BPB (`-0.00427`), seed 999.
 
 This is a non-record research submission testing TWEO (Transformers Without Extreme Outliers, Liang et al., 2025) on the Parameter Golf SP1024 baseline. TWEO is a training-only activation regularizer:
 
@@ -12,7 +14,7 @@ L_total = L_CE + lambda(t) * (1/L) * sum_l mean((abs(A_l) / (tau + eps))^p)
 
 where `A_l` is the post-block residual activation after `x = x + MLP(LN(x))`. I used `tau=5`, `p=4`, and a tiny early cosine decay from `lambda=0.0002` to `0` over the first `3000` steps.
 
-The useful finding is narrow but reproducible in this setup: **always-on TWEO hurts BPB, but a small early TWEO pulse improves final int8+zlib BPB on matched 4h wallclock controls.** This suggests TWEO is acting as an early trajectory regularizer, not as a persistent compression regularizer.
+The useful finding is narrow but reproducible: **the fixed and nonzero-tail TWEO variants I tested hurt BPB in this setup, but a small early TWEO pulse improves final int8+zlib BPB on matched 4h wallclock controls.** This suggests TWEO is acting as an early trajectory regularizer, not as a persistent compression regularizer.
 
 ## Results
 
@@ -28,6 +30,25 @@ All runs use the same SP1024 baseline architecture, same data, same validation, 
 | **Mean** | **TWEO early cosine** | | | **1.22993190** | **15,890,375** |
 
 Mean delta: `-0.00134364` BPB. The TWEO runs are slightly slower and finish with fewer steps, so this is not a throughput artifact.
+
+## 1×H100 80-Minute Directional Confirmation
+
+I also ran a 1×H100 matched seed-999 pair for `4800` seconds. This is a practical proxy for the 8×H100 10-minute baseline because the 1×H100 run performs the same global batch through `grad_accum_steps=8`; the 8×H100 run distributes those microsteps across GPUs. The actual step count is the real comparison.
+
+| Seed | Run | Steps | Checkpoint BPB | Final int8+zlib BPB | Artifact bytes | Step avg |
+|---:|---|---:|---:|---:|---:|---:|
+| 999 | baseline | 9088 | 1.2298 | 1.23612313 | 15,867,948 | 528.21 ms |
+| 999 | TWEO early cosine | 9066 | 1.2263 | 1.23184948 | 15,884,729 | 529.50 ms |
+
+H100 delta: `-0.00427365` BPB post-int8+zlib. The TWEO run again finishes with fewer steps and a slightly larger artifact, so the gain is not coming from throughput or size.
+
+The H100 run also reproduces the activation-outlier mechanism:
+
+| Seed 999, 1xH100 | Baseline absmax | TWEO absmax |
+|---|---:|---:|
+| step 4000 | 2,113,536 | 44,800 |
+| step 8000 | 9,961,472 | 1,277,952 |
+| final checkpoint | 10,747,904 | 1,523,712 |
 
 ## What Worked
 
@@ -59,7 +80,7 @@ This confirms the intervention affects the mechanism targeted by the paper. The 
 
 ## What Did Not Work
 
-### Paper-scale / always-on TWEO
+### Paper-scale / fixed TWEO
 
 Large fixed lambdas looked excellent in very short, undertrained runs, then failed at longer horizons. This was the main trap in the project.
 
@@ -134,7 +155,7 @@ python3 train_gpt.py
 
 ## Compliance
 
-- Non-record, unlimited-compute-style experiment; current runs use a 4h wallclock cap.
+- Non-record, unlimited-compute-style experiment; current runs use a 4h wallclock cap on RTX 4080.
 - Artifact stays under `16,000,000` bytes in all included runs.
 - No tokenizer or dataset changes.
 - No validation/test-time training.
@@ -150,19 +171,15 @@ python3 train_gpt.py
 - Artifact size gets slightly worse in the winning setting.
 - The paper's strongest claim is about enabling native FP8 training and W8A8 per-tensor static quantization. This submission does not use FP8 training; it tests whether TWEO transfers to Parameter Golf's BF16 training plus int8+zlib roundtrip.
 
-## Planned H100 Confirmation
+## H100 Confirmation / Next Step
 
-Before opening this PR, I plan to add H100 logs for matched baseline/TWEO runs. The first target is a 1xH100 80-minute seed-999 matched pair. This is a practical proxy for the 8xH100 10-minute setting because the baseline uses the same global batch and 1xH100 does roughly the same per-step work via gradient accumulation that 8xH100 distributes across GPUs. The actual step count is still reported and should be treated as the real comparison.
+The two seed-999 H100 logs are included as:
 
-```bash
-python3 data/cached_challenge_fineweb.py --variant sp1024
-bash records/track_non_record_16mb/2026-04-14_TWEO_EarlyCosine_OutlierReg_SP1024_4h/run_h100_80m_pair.sh
-```
+- `train_seed999_h100_80m_base.log`
+- `train_seed999_h100_80m_tweo_cosdecay.log`
 
-The acceptance claim should be either:
 
-- positive: TWEO early cosine improves BPB across 3 matched seeds, or
-- negative/weak-positive: TWEO changes activation geometry reliably, but the BPB gain is small and not yet robust enough for a record path.
+The current acceptance claim is: TWEO early cosine improves BPB across two local matched 4h seed pairs and one 1×H100 80-minute directional seed pair, while the fixed and nonzero-tail TWEO variants I tested show that persistent activation suppression hurts BPB in this setup.
 
 ## Included Files
 
@@ -174,7 +191,8 @@ The acceptance claim should be either:
 - `train_seed42_tweo_cosdecay_4h.log`
 - `train_seed314_base_4h.log`
 - `train_seed314_tweo_cosdecay_4h.log`
-- `run_h100_80m_pair.sh`
+- `train_seed999_h100_80m_base.log`
+- `train_seed999_h100_80m_tweo_cosdecay.log`
 
 ## Credits
 
